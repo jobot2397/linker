@@ -1,0 +1,27 @@
+# linker.toml — declare symlink mappings for a dotfiles repo.
+#
+# Place this file at the root of your repository (or any ancestor of your
+# working directory). Paths resolve as follows:
+#
+#   source       relative to the directory containing this file (repo root)
+#   destination  ~ expands to your home directory; absolute paths are kept;
+#                other relative paths are also relative to the repo root
+#
+# Path separators may be written with / on all platforms; Go normalizes them.
+
+[[links]]
+source = "dotfiles/zshrc"
+destination = "~/.zshrc"
+
+[[links]]
+source = "dotfiles/gitconfig"
+destination = "~/.gitconfig"
+
+[[links]]
+source = "dotfiles/config/nvim"
+destination = "~/.config/nvim"
+
+# Absolute destinations are fine too:
+# [[links]]
+# source = "scripts/hello"
+# destination = "/usr/local/bin/hello"
