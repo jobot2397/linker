@@ -3,9 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-$(tr -d '[:space:]' <"$ROOT/VERSION")}"
 OUT="${OUT:-$ROOT/dist}"
-MODULE="github.com/jobot2397/linker/cmd/linker"
 
 mkdir -p "$OUT"
 

@@ -2,16 +2,29 @@
 
 Cross-platform CLI (and TUI) that creates and manages symlinks declared in a `linker.toml` — built for dotfiles repos.
 
-**Version:** 0.1.0
+**Version:** 0.1.0 (see [`VERSION`](VERSION))
 
 ## Install
+
+### Homebrew
+
+```bash
+brew tap jobot2397/linker https://github.com/jobot2397/linker
+brew install linker
+# or latest main:
+brew install --HEAD linker
+```
+
+The formula lives at [`Formula/linker.rb`](Formula/linker.rb) and is pinned to a git tag + revision. After tagging a release, run `./scripts/update-homebrew-formula.sh` (or `mise run formula:update`) so the formula tracks that version.
+
+### Binaries / source
 
 Download a binary from the [releases](https://github.com/jobot2397/linker/releases) page, or build from source:
 
 ```bash
 go install github.com/jobot2397/linker/cmd/linker@latest
 # or
-go build -o linker ./cmd/linker
+mise run build   # embeds VERSION via ldflags
 ```
 
 ## Quick start
@@ -90,7 +103,18 @@ scripts/build-release.sh
 .github/workflows/release.yml
 ```
 
-## Build release binaries
+## Versioning & release
+
+Single source of truth: the [`VERSION`](VERSION) file.
+
+```bash
+./scripts/bump-version.sh 0.2.0          # bumps VERSION, main.go default, README, formula
+git commit -am "chore: bump version to v0.2.0"
+git tag -a v0.2.0 -m "linker v0.2.0"
+git push && git push origin v0.2.0
+./scripts/update-homebrew-formula.sh     # pin Formula/linker.rb to the tag revision
+git commit -am "chore: update Homebrew formula for v0.2.0" && git push
+```
 
 ```bash
 ./scripts/build-release.sh
@@ -99,7 +123,7 @@ scripts/build-release.sh
 
 Targets: `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`, `windows/amd64`, `windows/arm64`.
 
-Or push a `v*` tag — the GitHub Actions workflow builds all platforms and attaches them to the release.
+Or push a `v*` tag (must match `VERSION`) — GitHub Actions builds all platforms and attaches them to the release.
 
 ## License
 

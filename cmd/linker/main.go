@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/jobot2397/linker/internal/config"
 	"github.com/jobot2397/linker/internal/symlink"
@@ -22,6 +23,8 @@ func main() {
 }
 
 func run(args []string) error {
+	cfgPathFlag, args := peelConfigFlag(args)
+
 	if len(args) > 0 {
 		switch args[0] {
 		case "-h", "--help", "help":
@@ -31,25 +34,31 @@ func run(args []string) error {
 			fmt.Printf("linker %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
 			return nil
 		case "tui":
-			return runTUI()
+			return runTUI(cfgPathFlag)
 		case "apply":
 			filter := ""
 			if len(args) > 1 {
 				filter = args[1]
 			}
-			return runApply(filter)
+			return runApply(cfgPathFlag, filter)
 		case "status":
-			return runStatus()
+			return runStatus(cfgPathFlag)
 		}
 	}
 
-	// No subcommand: if a path-like arg is given, treat it as a filter;
-	// otherwise apply all links from the nearest linker.toml.
-	if len(args) == 1 && !isFlag(args[0]) {
-		return runApply(args[0])
+	// Bare path to an existing file → treat as config and open the TUI.
+	if len(args) == 1 && !isFlag(args[0]) && looksLikeConfigFile(args[0]) {
+		return runTUI(args[0])
 	}
+
+	// Bare source filter still applies that one link.
+	if len(args) == 1 && !isFlag(args[0]) {
+		return runApply(cfgPathFlag, args[0])
+	}
+
+	// Default: interactive TUI.
 	if len(args) == 0 {
-		return runApply("")
+		return runTUI(cfgPathFlag)
 	}
 
 	printUsage()
@@ -60,7 +69,57 @@ func isFlag(s string) bool {
 	return len(s) > 0 && s[0] == '-'
 }
 
-func loadConfig() (*config.Config, string, string, error) {
+// peelConfigFlag extracts -c/--config <path> from args.
+func peelConfigFlag(args []string) (cfgPath string, rest []string) {
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "-c" || a == "--config":
+			if i+1 >= len(args) {
+				// Leave it; run() will fail later with a clearer load error.
+				rest = append(rest, a)
+				continue
+			}
+			cfgPath = args[i+1]
+			i++
+		case len(a) > 9 && a[:9] == "--config=":
+			cfgPath = a[9:]
+		case len(a) > 2 && a[:2] == "-c" && a != "-c":
+			// unsupported short form glued; pass through
+			rest = append(rest, a)
+		default:
+			rest = append(rest, a)
+		}
+	}
+	return cfgPath, rest
+}
+
+func looksLikeConfigFile(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return false
+	}
+	base := filepath.Base(path)
+	if base == "linker.toml" || base == "linker.toml.example" {
+		return true
+	}
+	return filepath.Ext(path) == ".toml" || strings.HasSuffix(base, ".toml.example")
+}
+
+func loadConfig(explicit string) (*config.Config, string, string, error) {
+	if explicit != "" {
+		cfgPath, err := filepath.Abs(explicit)
+		if err != nil {
+			return nil, "", "", err
+		}
+		cfg, err := config.Load(cfgPath)
+		if err != nil {
+			return nil, "", "", err
+		}
+		return cfg, filepath.Dir(cfgPath), cfgPath, nil
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", "", err
@@ -76,8 +135,8 @@ func loadConfig() (*config.Config, string, string, error) {
 	return cfg, repoRoot, cfgPath, nil
 }
 
-func runApply(filter string) error {
-	cfg, repoRoot, cfgPath, err := loadConfig()
+func runApply(explicit, filter string) error {
+	cfg, repoRoot, cfgPath, err := loadConfig(explicit)
 	if err != nil {
 		return err
 	}
@@ -108,8 +167,8 @@ func runApply(filter string) error {
 	return nil
 }
 
-func runStatus() error {
-	cfg, repoRoot, cfgPath, err := loadConfig()
+func runStatus(explicit string) error {
+	cfg, repoRoot, cfgPath, err := loadConfig(explicit)
 	if err != nil {
 		return err
 	}
@@ -131,8 +190,8 @@ func runStatus() error {
 	return nil
 }
 
-func runTUI() error {
-	cfg, repoRoot, cfgPath, err := loadConfig()
+func runTUI(explicit string) error {
+	cfg, repoRoot, cfgPath, err := loadConfig(explicit)
 	if err != nil {
 		return err
 	}
@@ -176,16 +235,21 @@ func printUsage() {
 	fmt.Printf(`linker %s — manage dotfile symlinks from linker.toml
 
 Usage:
-  linker                 Apply all links from nearest linker.toml
-  linker <source>        Apply only the link matching <source>
-  linker apply [source]  Same as above
-  linker status          Show current link status
-  linker tui             Interactive TUI to enable/disable links
-  linker version         Print version
-  linker help            Show this help
+  linker                      Open the TUI (finds linker.toml upward)
+  linker <config.toml>        Open the TUI with an explicit config file
+  linker apply [source]       Create symlinks (all, or matching source)
+  linker <source>             Apply only the link matching <source>
+  linker status               Show current link status
+  linker tui                  Same as bare linker
+  linker version              Print version
+  linker help                 Show this help
+
+Options:
+  -c, --config <path>         Use this config instead of searching
 
 Config discovery:
-  Walks upward from the current directory looking for linker.toml.
+  By default walks upward from the current directory looking for linker.toml
+  (the filename must be exactly linker.toml — not linker.toml.example).
 
 Windows notes:
   Creating symlinks requires Developer Mode or an elevated shell.

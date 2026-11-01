@@ -1,0 +1,34 @@
+# Tools for developing and releasing linker.
+# Install: mise install
+
+[tools]
+go = "1.26"
+gh = "2.103"
+
+[tasks.build]
+description = "Build the linker binary into ./bin (version from VERSION)"
+run = """
+mkdir -p bin
+VERSION="$(./scripts/read-version.sh)"
+go build -ldflags "-s -w -X main.version=${VERSION}" -o bin/linker ./cmd/linker
+"""
+
+[tasks.test]
+description = "Run all Go tests"
+run = "go test ./..."
+
+[tasks.run]
+description = "Build and run linker (pass args after --)"
+run = "go run ./cmd/linker --"
+
+[tasks.release]
+description = "Cross-compile release binaries into ./dist"
+run = "./scripts/build-release.sh"
+
+[tasks.bump]
+description = "Bump VERSION and sync formula/main (pass version after --)"
+run = "./scripts/bump-version.sh"
+
+[tasks."formula:update"]
+description = "Pin Homebrew formula to the VERSION tag revision"
+run = "./scripts/update-homebrew-formula.sh"

@@ -41,6 +41,11 @@ jobs:
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           VERSION="${GITHUB_REF_NAME#v}"
+          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ "$VERSION" != "$FILE_VERSION" ]; then
+            echo "Tag version (${VERSION}) does not match VERSION file (${FILE_VERSION})" >&2
+            exit 1
+          fi
           OUT="linker_${VERSION}_${GOOS}_${GOARCH}${EXT}"
           go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" \
             -o "dist/${OUT}" ./cmd/linker
