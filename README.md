@@ -100,7 +100,7 @@ internal/config/     # linker.toml parse, find, path expand
 internal/symlink/    # create / remove / inspect (cross-platform)
 internal/tui/        # charmbracelet/bubbletea UI
 scripts/build-release.sh
-.github/workflows/release.yml
+Formula/linker.rb
 ```
 
 ## Versioning & release
@@ -122,8 +122,6 @@ git commit -am "chore: update Homebrew formula for v0.2.0" && git push
 ```
 
 Targets: `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`, `windows/amd64`, `windows/arm64`.
-
-Or push a `v*` tag (must match `VERSION`) — GitHub Actions builds all platforms and attaches them to the release.
 
 ## License
 
